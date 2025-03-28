@@ -1,5 +1,4 @@
 use std::env;
-use std::fmt::LowerHex;
 use std::fs;
 
 // CHIP-8 SPECIFICS
@@ -20,15 +19,48 @@ struct CHIP8 {
 // Instructions are stored starting at address 0x200
 const START_ADDRESS: u16 = 0x200;
 
+// Fontset Size
+const FONTSET_SIZE: u8 = 80;
+// Fontset Address (Fontsets begin to be stored in 0x50, in memory)
+const FONTSET_ADDRESS: u8 = 0x50;
+// Every 5 bytes represents a 'sprite', for a total of 16 haracters
+const FONTSET: [u8; FONTSET_SIZE as usize] = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+];
+
 impl CHIP8 {
     // Constructor to create a new chip8 model
     fn new() -> Self {
-        Self {
+        let mut chip8: CHIP8 = CHIP8 {
             registers: [0x00; 16],
             memory: [0x00; 4096],
             PC: START_ADDRESS, // Program Counter set to First Instruction
+        };
+
+        // Start loading the font bytes into memory, starting from 0x50
+        for (i, font) in FONTSET.iter().enumerate() {
+            chip8.memory[FONTSET_ADDRESS as usize + i] = *font;
         }
+
+        // Return the newly constructed chip
+        return chip8;
     }
+
     // Function to load a ROM File using a file name
     fn load_rom(chip8: &mut CHIP8, filename_path: &String) {
         // The ROM file is a binary file
