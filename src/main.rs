@@ -79,7 +79,6 @@ impl CHIP8 {
 
         // Store the instructions from the vector-array in the chip's memory starting from 0x200
         for (i, instruction) in rom.iter().enumerate() {
-            eprintln!("{}", i);
             chip8.memory[START_ADDRESS as usize + i] = *instruction;
         }
     }
@@ -87,6 +86,7 @@ impl CHIP8 {
     // 00E0 - CLS
     // Clear the video display
     fn op_00e0(&mut self) {
+        eprintln!("In OP_00E0");
         // Set all pixels in the screen to 0 (black)
         self.video.fill(0);
     }
@@ -96,6 +96,7 @@ impl CHIP8 {
     fn op_00ee(&mut self) {
         // The top of the stack has the address of one instruction past the one that called the subroutine
         // So we can put that back into the PC.
+        eprintln!("In OP_00EE");
         self.st_pointer -= 1;
         self.PC = self.stack[self.st_pointer as usize];
     }
@@ -103,6 +104,7 @@ impl CHIP8 {
     // 1nnn - JP addr
     // Jump to location at 'nnn'
     fn op_1nnn(&mut self, opcode: u16) {
+        eprintln!("In OP_1NNN");
         // Mask the opcode to retrieve the address
         let address: u16 = opcode & 0x0FFF;
 
@@ -113,6 +115,8 @@ impl CHIP8 {
     // 2nnn - CALL addr
     // Call subroutine at 'nnn'
     fn op_2nnn(&mut self, opcode: u16) {
+        eprintln!("In OP_2NNN");
+
         // Mask the opcode to retrieve the address
         let address: u16 = opcode & 0x0FFF;
 
@@ -128,6 +132,8 @@ impl CHIP8 {
     // Skip next instruction if Vx = kk
     //The interpreter compares register Vx to kk, and if they are equal, increments the program counter by 2.
     fn op_3xkk(&mut self, opcode: u16) {
+        eprintln!("In OP_3XKK");
+
         // Mask the opcode to get the first 8 bits, which represent 'kk'
         let value: u16 = opcode & 0x00FF;
         // Bitshift to the right by 8 bits, then mask the first 4 bits, which represent 'x'
@@ -143,6 +149,8 @@ impl CHIP8 {
     // Skip next instruction if Vx != kk
     // The interpreter compares register Vx to kk, and if they are not equal, increments the program counter by 2.
     fn op_4xkk(&mut self, opcode: u16) {
+        eprintln!("In OP_4XKK");
+
         // Mask the opcode to get the first 8 bits, which represent 'kk'
         let value: u16 = opcode & 0x0FF;
         // Bitshift to the right by 8 bits, then mask the first 4 bits, which represent 'x'
@@ -158,6 +166,8 @@ impl CHIP8 {
     // Skip next instruction if Vx = Vy.
     // The interpreter compares register Vx to register Vy, and if they are equal, increments the program counter by 2.
     fn op_5xy0(&mut self, opcode: u16) {
+        eprintln!("In OP_5XY0");
+
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -173,6 +183,8 @@ impl CHIP8 {
     // Set Vx = kk.
     // The interpreter puts the value kk into register Vx.
     fn op_6xkk(&mut self, opcode: u16) {
+        eprintln!("In OP_6XKK");
+
         // Mask the opcode to get 0x00kk
         let value: u16 = opcode & 0x00FF;
         // Bitwise shift to the right by 8 bits, then mask to get 0x0x
@@ -185,6 +197,8 @@ impl CHIP8 {
     // Set Vx = Vx + kk.
     // Adds the value kk to the value of register Vx, then stores the result in Vx.
     fn op_7xkk(&mut self, opcode: u16) {
+        eprintln!("In OP_7XKK");
+
         // Mask the opcode to get 0x00kk
         let value: u16 = opcode & 0x00FF;
         // Bitwise shift to the right by 8 bits, then mask to get 0x0x
@@ -197,6 +211,8 @@ impl CHIP8 {
     // Set Vx = Vy.
     // Stores the value of register Vy in register Vx.
     fn op_8xy0(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY0");
+
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -209,6 +225,7 @@ impl CHIP8 {
     // Set Vx = Vx OR Vy.
     // Performs a bitwise OR on the values of Vx and Vy, then stores the result in Vx.
     fn op_8xy1(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY1");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -221,6 +238,7 @@ impl CHIP8 {
     // Set Vx = Vx AND Vy.
     // Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
     fn op_8xy2(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY2");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -233,6 +251,7 @@ impl CHIP8 {
     // Set Vx = Vx XOR Vy.
     // Performs a bitwise exclusive OR on the values of Vx and Vy, then stores the result in Vx.
     fn op_8xy3(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY3");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -245,6 +264,7 @@ impl CHIP8 {
     // Set Vx = Vx + Vy, set VF = carry.
     // The values of Vx and Vy are added together.
     fn op_8xy4(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY4");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -267,6 +287,7 @@ impl CHIP8 {
     // Set Vx = Vx - Vy, set VF = NOT borrow.
     // The value of Vy is subtracted from Vx.
     fn op_8xy5(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY5");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -297,6 +318,7 @@ impl CHIP8 {
     // Set Vx = Vy - Vx, set VF = NOT borrow.
     // The value of Vx is substracted from Vy.
     fn op_8xy7(&mut self, opcode: u16) {
+        eprintln!("In OP_8XY7");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -320,6 +342,7 @@ impl CHIP8 {
     // 9xy0 - SNE Vx, Vy
     // Skip next instruction if Vx != Vy.
     fn op_9xy0(&mut self, opcode: u16) {
+        eprintln!("In OP_9XY0");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
         let x: u16 = (opcode >> 4) & 0x00F;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
@@ -334,6 +357,7 @@ impl CHIP8 {
     // Annn - LD I, addr
     // Set I = nnn.
     fn op_annn(&mut self, opcode: u16) {
+        eprintln!("In OP_ANNN");
         // The value of register I is set to nnn.
         self.IR = opcode & 0x0FFF;
     }
@@ -341,6 +365,7 @@ impl CHIP8 {
     // Bnnn - JP V0, addr
     // Jump to location nnn + V0.
     fn op_bnnn(&mut self, opcode: u16) {
+        eprintln!("In OP_BNNN");
         // The program counter is set to nnn plus the value of V0.
         self.PC = self.registers[0] as u16 + (opcode & 0x0FFF);
     }
@@ -348,6 +373,7 @@ impl CHIP8 {
     // Cxkk - RND Vx, byte
     // Set Vx = random byte AND kk.
     fn op_cxkk(&mut self, opcode: u16) {
+        eprintln!("In OP_CXKK");
         let value: u16 = opcode & 0x00FF;
         let r_address: u16 = (opcode >> 8) & 0x0F;
         // The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx.
@@ -359,6 +385,7 @@ impl CHIP8 {
 
     // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen.
     fn op_dxyn(&mut self, opcode: u16) {
+        eprintln!("In OP_DXYN");
         let height: u8 = (opcode & 0x000F) as u8;
         let vy: u16 = (opcode & 0x00F0) >> 4;
         let vx: u16 = (opcode & 0x0F00) >> 8;
@@ -375,10 +402,10 @@ impl CHIP8 {
                 let sprite_pixel: u8 = sprite_byte & (0x80 >> col);
                 // TODO Fix if it does not work
                 if sprite_pixel == 1 {
-                    if self.video[((y_pos + row) * 64 + (x_pos + col)) as usize] == 0xFF {
+                    if self.video[((y_pos + row) * 32 + (x_pos + col)) as usize] == 0xFF {
                         self.registers[0xF] = 1;
                     }
-                    self.video[((y_pos + row) * 64 + (x_pos + col)) as usize] ^= 0xFF;
+                    self.video[((y_pos + row) * 32 + (x_pos + col)) as usize] ^= 0xFF;
                 }
             }
         }
@@ -390,7 +417,9 @@ impl CHIP8 {
 
     // TODO Finish all instructions
     fn exec(&mut self, opcode: u16) {
-        match opcode & 0xF000 >> 12 {
+        eprintln!("In OPCODE EXECUTE STAGE; OPCODE: {:#x}", opcode);
+        eprintln!("MATCHIN: {:#x}", (opcode & 0xF000) >> 12);
+        match (opcode & 0xF000) >> 12 {
             0x0 => match opcode & 0x000F {
                 0x0 => self.op_00e0(),
                 0xE => self.op_00ee(),
@@ -427,8 +456,9 @@ impl CHIP8 {
     }
 
     fn cycle(&mut self) {
-        let opcode: u16 = ((self.memory[self.PC as usize] as u16) << 8)
+        let opcode: u16 = ((self.memory[self.PC as usize] as u16 | 0xFF00) << 8)
             | self.memory[(self.PC + 1) as usize] as u16;
+        eprintln!("IN CYCLE STAGE; PC: {:#x} OPCODE: {:#x}", self.PC, opcode);
 
         self.PC += 2;
 
@@ -457,25 +487,27 @@ fn main() {
     // Load ROM Instructions into Memory from the file path
     CHIP8::load_rom(&mut chip8, filename_path);
 
-    // let mut window = Window::new(
-    //     "CHIP8",
-    //     640,
-    //     320,
-    //     WindowOptions {
-    //         borderless: false,
-    //         resize: true,
-    //         scale: Scale::X8,
-    //         topmost: true,
-    //         ..WindowOptions::default()
-    //     },
-    // )
-    // .unwrap();
-    // while window.is_open() && !window.is_key_down(Key::Escape) {
-    //     chip8.cycle();
-    //     window.update();
-    // }
-
-    for (i, byte) in chip8.memory.iter().enumerate() {
-        println!("{:#x}: {:#x}", i, byte);
+    let mut window = Window::new(
+        "CHIP8",
+        640,
+        320,
+        WindowOptions {
+            borderless: false,
+            resize: true,
+            scale: Scale::X8,
+            topmost: true,
+            ..WindowOptions::default()
+        },
+    )
+    .unwrap();
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        chip8.cycle();
+        window.update();
     }
+
+    // for (i, byte) in chip8.memory.iter().enumerate() {
+    //     if (*byte != 0) {
+    //         println!("{:#x}: {:#x}", i, byte);
+    //     }
+    // }
 }
