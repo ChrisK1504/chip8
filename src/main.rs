@@ -6,6 +6,8 @@ use minifb::WindowOptions;
 use rand;
 use std::env;
 use std::fs;
+use std::thread;
+use std::time::Duration;
 
 // CHIP-8 SPECIFICS
 struct CHIP8 {
@@ -18,8 +20,8 @@ struct CHIP8 {
     // delayTimer: u8, // 8-bit Delay Timer
     // soundTimer: u8, // 8-bit Sound Timer
     // keypad: [u8; 16], // 16 input keys
-    video: [u8; 64 * 32], // 64 by 32 pixels video screen
-                          // opcode: u16, // 2 Byte operation code
+    video: [u32; 64 * 32], // 64 by 32 pixels video screen
+                           // opcode: u16, // 2 Byte operation code
 }
 
 // Instructions are stored starting at address 0x200
@@ -400,13 +402,21 @@ impl CHIP8 {
 
             for col in 0..8 {
                 let sprite_pixel: u8 = sprite_byte & (0x80 >> col);
+                let pixel_loc: u32 = (y_pos + row) as u32 * 64 + (x_pos + col) as u32;
+                eprintln!("{}", (y_pos + row) as u32 * 64 + (x_pos + col) as u32);
+
                 // TODO Fix if it does not work
                 if sprite_pixel == 1 {
-                    if self.video[((y_pos + row) * 32 + (x_pos + col)) as usize] == 0xFF {
+                    if self.video[pixel_loc as usize] == 0xFFA500 {
                         self.registers[0xF] = 1;
                     }
-                    self.video[((y_pos + row) * 32 + (x_pos + col)) as usize] ^= 0xFF;
+                    self.video[pixel_loc as usize] ^= 0xFFA500;
                 }
+
+                eprintln!(
+                    "PIXEL AT: {} IS: {}",
+                    pixel_loc, self.video[pixel_loc as usize]
+                );
             }
         }
     }
@@ -418,7 +428,7 @@ impl CHIP8 {
     // TODO Finish all instructions
     fn exec(&mut self, opcode: u16) {
         eprintln!("In OPCODE EXECUTE STAGE; OPCODE: {:#x}", opcode);
-        eprintln!("MATCHIN: {:#x}", (opcode & 0xF000) >> 12);
+        eprintln!("MATCHIN: {:#x}\n", (opcode & 0xF000) >> 12);
         match (opcode & 0xF000) >> 12 {
             0x0 => match opcode & 0x000F {
                 0x0 => self.op_00e0(),
@@ -458,7 +468,7 @@ impl CHIP8 {
     fn cycle(&mut self) {
         let opcode: u16 = ((self.memory[self.PC as usize] as u16 | 0xFF00) << 8)
             | self.memory[(self.PC + 1) as usize] as u16;
-        eprintln!("IN CYCLE STAGE; PC: {:#x} OPCODE: {:#x}", self.PC, opcode);
+        eprintln!("IN CYCLE STAGE; PC: {:#x} OPCODE: {:#x}\n", self.PC, opcode);
 
         self.PC += 2;
 
@@ -477,6 +487,8 @@ impl CHIP8 {
 }
 
 fn main() {
+    unsafe { env::set_var("RUST_BACKTRACE", "1") };
+
     // Create new chip
     let mut chip8: CHIP8 = CHIP8::new();
     // Collect command line arguments
@@ -489,20 +501,34 @@ fn main() {
 
     let mut window = Window::new(
         "CHIP8",
-        640,
-        320,
+        64,
+        32,
         WindowOptions {
             borderless: false,
             resize: true,
             scale: Scale::X8,
-            topmost: true,
+            scale_mode: minifb::ScaleMode::AspectRatioStretch,
+            topmost: false,
             ..WindowOptions::default()
         },
     )
     .unwrap();
+
+    window.set_target_fps(60);
+
     while window.is_open() && !window.is_key_down(Key::Escape) {
         chip8.cycle();
-        window.update();
+        for j in 0..63 {
+            for i in 0..31 {
+                eprint!("{:#x} ", chip8.video[(i * j) as usize]);
+            }
+            eprintln!();
+        }
+        window
+            .update_with_buffer(&chip8.video.to_vec(), 64, 32)
+            .unwrap();
+
+        thread::sleep(Duration::from_millis(60));
     }
 
     // for (i, byte) in chip8.memory.iter().enumerate() {
