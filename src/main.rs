@@ -16,7 +16,7 @@ struct CHIP8 {
     IR: u16, // 16-bit Index Register (16 bits are needed to hold the maximum memory adress 0xFFF)
     PC: u16, // 16-bit Program Counter
     stack: [u16; 16], // 16 level Execution Stack
-    st_pointer: u8, // 8-bit Stack Pointer
+    st_pointer: usize, // 8-bit Stack Pointer
     // delayTimer: u8, // 8-bit Delay Timer
     // soundTimer: u8, // 8-bit Sound Timer
     // keypad: [u8; 16], // 16 input keys
@@ -123,7 +123,7 @@ impl CHIP8 {
         let address: u16 = opcode & 0x0FFF;
 
         // Push the current PC on top of the stack
-        self.stack[self.st_pointer as usize] = self.PC;
+        self.stack[self.st_pointer] = self.PC;
         // Increment the stack pointer
         self.st_pointer += 1;
         // Set the PC to the address
@@ -139,7 +139,7 @@ impl CHIP8 {
         // Mask the opcode to get the first 8 bits, which represent 'kk'
         let value: u16 = opcode & 0x00FF;
         // Bitshift to the right by 8 bits, then mask the first 4 bits, which represent 'x'
-        let r_address: u16 = (opcode >> 8) & 0x0F;
+        let r_address: u16 = (opcode & 0x0F00) >> 8;
 
         // Compare if Vx and kk are equal
         if self.registers[r_address as usize] == value as u8 {
@@ -154,9 +154,9 @@ impl CHIP8 {
         eprintln!("In OP_4XKK");
 
         // Mask the opcode to get the first 8 bits, which represent 'kk'
-        let value: u16 = opcode & 0x0FF;
+        let value: u16 = opcode & 0x00FF;
         // Bitshift to the right by 8 bits, then mask the first 4 bits, which represent 'x'
-        let r_address: u16 = (opcode >> 8) & 0x0F;
+        let r_address: u16 = (opcode & 0x0F00) >> 8;
 
         // Check Vx and kk are not equal
         if self.registers[r_address as usize] != value as u8 {
@@ -171,9 +171,9 @@ impl CHIP8 {
         eprintln!("In OP_5XY0");
 
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
 
         // Compare if Vx and Vy are equal
         if self.registers[x as usize] == self.registers[y as usize] {
@@ -190,9 +190,14 @@ impl CHIP8 {
         // Mask the opcode to get 0x00kk
         let value: u16 = opcode & 0x00FF;
         // Bitwise shift to the right by 8 bits, then mask to get 0x0x
-        let r_address: u16 = (opcode >> 8) & 0x0F;
+        let r_address: u16 = (opcode & 0x0F00) >> 8;
         // Load 'kk' into 'Vx'
         self.registers[r_address as usize] = value as u8;
+
+        eprintln!(
+            "Out OP_6XKK\nVALUE: {:#x}\nREGISTER: {:#x}\n",
+            value, r_address
+        );
     }
 
     // 7xkk - ADD Vx, byte
@@ -204,9 +209,11 @@ impl CHIP8 {
         // Mask the opcode to get 0x00kk
         let value: u16 = opcode & 0x00FF;
         // Bitwise shift to the right by 8 bits, then mask to get 0x0x
-        let r_address: u16 = (opcode >> 8) & 0x0F;
+        let r_address: u16 = (opcode & 0x0F00) >> 8;
         // Add 'kk' into 'Vx'
-        self.registers[r_address as usize] += value as u8;
+        let result = u8::overflowing_add(self.registers[r_address as usize], value as u8);
+
+        self.registers[r_address as usize] = result.0;
     }
 
     // 8xy0 - LD Vx, Vy
@@ -216,9 +223,9 @@ impl CHIP8 {
         eprintln!("In OP_8XY0");
 
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Load the value inside 'Vy' onto 'Vx'
         self.registers[x as usize] = self.registers[y as usize];
     }
@@ -229,11 +236,11 @@ impl CHIP8 {
     fn op_8xy1(&mut self, opcode: u16) {
         eprintln!("In OP_8XY1");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Perform bitwise OR with the values inside 'Vx' and 'Vy'. Store back into 'Vx'
-        self.registers[x as usize] = self.registers[x as usize] | self.registers[y as usize];
+        self.registers[x as usize] |= self.registers[y as usize];
     }
 
     // 8xy2 - AND Vx, Vy
@@ -242,11 +249,11 @@ impl CHIP8 {
     fn op_8xy2(&mut self, opcode: u16) {
         eprintln!("In OP_8XY2");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Perform bitwise AND with the values inside 'Vx' and 'Vy'. Store back into 'Vx'
-        self.registers[x as usize] = self.registers[x as usize] & self.registers[y as usize];
+        self.registers[x as usize] &= self.registers[y as usize];
     }
 
     // 8xy3 - XOR Vx, Vy
@@ -255,11 +262,11 @@ impl CHIP8 {
     fn op_8xy3(&mut self, opcode: u16) {
         eprintln!("In OP_8XY3");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Perform bitwise XOR with the values inside 'Vx' and 'Vy'. Store back into 'Vx'
-        self.registers[x as usize] = self.registers[x as usize] ^ self.registers[y as usize];
+        self.registers[x as usize] ^= self.registers[y as usize];
     }
 
     // 8xy4 - ADD Vx, Vy
@@ -268,9 +275,9 @@ impl CHIP8 {
     fn op_8xy4(&mut self, opcode: u16) {
         eprintln!("In OP_8XY4");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Receive the values from the respective registers
         let vx: u8 = self.registers[x as usize];
         let vy: u8 = self.registers[y as usize];
@@ -280,8 +287,8 @@ impl CHIP8 {
         match add_result {
             Some(value) => self.registers[x as usize] = value,
             None => {
-                self.registers[x as usize] = vx + vy;
-                self.registers[15] = 1;
+                self.registers[x as usize] = (vx + vy) & 0xFF;
+                self.registers[0xF] = 1;
             }
         }
     }
@@ -291,9 +298,9 @@ impl CHIP8 {
     fn op_8xy5(&mut self, opcode: u16) {
         eprintln!("In OP_8XY5");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Receive the values from the respective registers
         let vx: u8 = self.registers[x as usize];
         let vy: u8 = self.registers[y as usize];
@@ -301,9 +308,9 @@ impl CHIP8 {
         // If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
         self.registers[x as usize] = vx - vy;
         if vx > vy {
-            self.registers[15] = 1;
+            self.registers[0xF] = 1;
         } else {
-            self.registers[15] = 0;
+            self.registers[0xF] = 0;
         }
     }
 
@@ -322,9 +329,9 @@ impl CHIP8 {
     fn op_8xy7(&mut self, opcode: u16) {
         eprintln!("In OP_8XY7");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
         // Receive the values from the respective registers
         let vx: u8 = self.registers[x as usize];
         let vy: u8 = self.registers[y as usize];
@@ -346,9 +353,9 @@ impl CHIP8 {
     fn op_9xy0(&mut self, opcode: u16) {
         eprintln!("In OP_9XY0");
         // Bitshift the opcode 4 bits to the right to remove the '0', then mask to get 0x00y
-        let x: u16 = (opcode >> 4) & 0x00F;
+        let x: u16 = (opcode & 0x0F00) >> 8;
         // Bitshift the opcode 8 bits to the right to remove the 'y0', then mask to get 0x0x
-        let y: u16 = (opcode >> 8) & 0x0F;
+        let y: u16 = (opcode & 0x00F0) >> 4;
 
         // Compare if Vx and Vy are not equal
         if self.registers[x as usize] != self.registers[y as usize] {
@@ -362,6 +369,7 @@ impl CHIP8 {
         eprintln!("In OP_ANNN");
         // The value of register I is set to nnn.
         self.IR = opcode & 0x0FFF;
+        eprintln!("Out OP_ANNN\nIR: {:#x}", self.IR);
     }
 
     // Bnnn - JP V0, addr
@@ -377,7 +385,7 @@ impl CHIP8 {
     fn op_cxkk(&mut self, opcode: u16) {
         eprintln!("In OP_CXKK");
         let value: u16 = opcode & 0x00FF;
-        let r_address: u16 = (opcode >> 8) & 0x0F;
+        let r_address: u16 = (opcode & 0x0F00) >> 8;
         // The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx.
         self.registers[r_address as usize] = (rand::random::<u16>() & value) as u8;
     }
@@ -405,20 +413,18 @@ impl CHIP8 {
                 let pixel_loc: u32 = (y_pos + row) as u32 * 64 + (x_pos + col) as u32;
                 eprintln!("{}", (y_pos + row) as u32 * 64 + (x_pos + col) as u32);
 
-                // TODO Fix if it does not work
-                if sprite_pixel == 1 {
+                // WAS: if sprite_pixel == 1
+                if sprite_pixel != 0 {
                     if self.video[pixel_loc as usize] == 0xFFA500 {
                         self.registers[0xF] = 1;
+                    } else {
+                        self.video[pixel_loc as usize] = 0xFFA500;
                     }
-                    self.video[pixel_loc as usize] ^= 0xFFA500;
                 }
-
-                eprintln!(
-                    "PIXEL AT: {} IS: {}",
-                    pixel_loc, self.video[pixel_loc as usize]
-                );
             }
         }
+
+        eprintln!("OUT OP_DXYN");
     }
 
     fn op_null(&self) {
@@ -428,7 +434,7 @@ impl CHIP8 {
     // TODO Finish all instructions
     fn exec(&mut self, opcode: u16) {
         eprintln!("In OPCODE EXECUTE STAGE; OPCODE: {:#x}", opcode);
-        eprintln!("MATCHIN: {:#x}\n", (opcode & 0xF000) >> 12);
+        eprintln!("MATCHIN: {:#x}", (opcode & 0xF000) >> 12);
         match (opcode & 0xF000) >> 12 {
             0x0 => match opcode & 0x000F {
                 0x0 => self.op_00e0(),
@@ -518,12 +524,12 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         chip8.cycle();
-        for j in 0..63 {
-            for i in 0..31 {
-                eprint!("{:#x} ", chip8.video[(i * j) as usize]);
-            }
-            eprintln!();
-        }
+        // for j in 0..63 {
+        //     for i in 0..31 {
+        //         eprint!("{:#x} ", chip8.video[(i * j) as usize]);
+        //     }
+        //     eprintln!();
+        // }
         window
             .update_with_buffer(&chip8.video.to_vec(), 64, 32)
             .unwrap();
